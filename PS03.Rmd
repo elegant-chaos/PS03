@@ -1,6 +1,6 @@
 ---
 title: "STAT/MATH 495: Problem Set 03"
-author: "WRITE YOUR NAME HERE"
+author: "Jenn Halbleib"
 date: "2017-09-26"
 output:
   html_document:
@@ -16,8 +16,9 @@ knitr::opts_chunk$set(echo = TRUE, fig.width=8, fig.height=4.5)
 
 # Load packages
 library(tidyverse)
-data1 <- read_csv("data/data1.csv")
-data2 <- read_csv("data/data2.csv")
+library(ggplot2)
+data1 <- read.csv("data/data1.csv")
+data2 <- read.csv("data/data2.csv")
 ```
 
 
@@ -31,14 +32,187 @@ For both `data1` and `data2` tibbles (a tibble is a data frame with some
 * Create a visualizaztion of this model plotted over the given $(x_i, y_i)$ points for $i=1,\ldots,n=3000$.
 * Give your estimate $\widehat{\sigma}$ of $\sigma$ where the noise component $\epsilon_i$ is distributed with mean 0 and standard deviation $\sigma$.
 
+#Making a Function  
 
-# Data 1
+First, I will define a function called "findDF". This function takes a dataframe of 3 columns: ID, X, and Y and returns a table of degrees of freedom and the corresponding error determined by LOOCV when fitting a splines model to the data. The degrees of freedom are determined using "leave one out" cross-validation. Note: For this function to work properly, the column names must be ID, X, and Y.  
+
+Note: According to the documentation for smooth.spline(), the optimal degrees of freedom falls in the range from (1, nx) where nx is the number of unique x values in the data set. For simplicity, since the x values for data1 and data2 are continuous over the range -9.961664 to 89.946751, I've analyzed the error for 2 to max(x)-min(x) degrees of freedom (UPDATE: post analysis, 99 appears to be the max that smooth.spline can take). Of course, this data could be used to build a model with up to 3000 degrees of freedom since no points repeat. However, I'm assuming that a knot width of about 1 ought to be granular enough to find the optimal degrees of freedom.
 
 ```{r, echo=TRUE, warning=FALSE, message=FALSE}
+
+findDF <- function(data){
+  #i iterates the length of the x vector, keeping track of which row to leave out
+  iMax <- length(data$x)
+  #j iterates through the possible degrees of freedom
+  jMax <- 99
+  j <- 2
+  #errorCurr stores the error for j degrees of freedom
+  errorCurr <- 0
+  errorForDF <- rep(0,jMax)
+  
+
+  while(j < jMax) {
+    for(i in 1:iMax){
+      errorVect <- rep(0, iMax)
+      tempData <- data[-i,]
+      tempModel <- smooth.spline(tempData$x, tempData$y, df = j)
+      errorVect[i] <- data[i,"y"] - predict(tempModel, data[i, "x"])$y  
+    }
+    errorVect <- errorVect*errorVect
+    errorCurr <- sqrt(sum(errorVect)/iMax)
+    
+    errorForDF[j] <- errorCurr
+    
+    j <- j + 1
+  }
+  
+  errorTable <- data.frame(DF = 1:jMax,errorForDF)
+  return(errorTable)
+}
+```
+
+#Data1 
+First, I'll call the function FindDF for data 1. (Note: Since this analysis takes about an hour to run on my laptop, I've chosen to save the output of the function findDF to a csv and load it when knitting to HTML. To run this code for yourself, uncomment the first two lines of the following code chunk.)
+```{r}
+#errorTableData1 <- findDF(data1)
+#write.csv(errorTableData1, file = "Data1RMSEforLOOCV.csv", row.names = FALSE)
+errorTableData1 <- read.csv("Data1RMSEforLOOCV.csv")
+```
+
+Plotting the errors with their corresponding df's, we can see that, in this case, LOOCV doesn't do a great job of capturing error caused by overfitting. My instinct says the optimal df probably lies somewhere between 30 and 40, where the curve flattens.
+```{r}
+ggplot(errorTableData1, aes(DF, errorForDF)) + 
+  geom_point() +
+  scale_x_continuous(breaks=c(10, 20, 30, 40, 50, 60, 70, 80, 90, 100)) +
+  labs(title = "RMSE from LOOCV for Data1", x = "Degrees of Freedom", y = "RMSE")
+thirtyFive <- smooth.spline(data1$x, data1$y, df=35) %>%
+  broom::augment() %>% 
+  ggplot(aes(x = data1$x)) +
+  geom_point(aes(y = data1$y)) +
+  geom_line(aes(y=.fitted), col="blue", size=1) +
+  labs(title = "Data1 Spline with 35 Degrees of Freedom", x = "x", y = "y") +
+  theme(plot.title = element_text(hjust = 0.5))
+thirtyFive
 ```
 
 # Data 2
-
+First, I'll call the function FindDF for data 2. (Again, I've written the output of findDF to a .csv for easy knitting.)
 ```{r, echo=TRUE, warning=FALSE, message=FALSE}
+#errorTableData2 <- findDF(data2)
+#write.csv(errorTableData2, file = "Data2RMSEforLOOCV.csv", row.names = FALSE)
+errorTableData2 <- read.csv("Data2RMSEforLOOCV.csv")
+```
+#UPDATE THIS
+Plotting the errors with their corresponding df's, we can see that, in this case, LOOCV doesn't do a great job of capturing error caused by overfitting. My instinct says the optimal df probably lies somewhere between 30 and 40, where the curve has an inflection point.
+```{r}
+ggplot(errorTableData2, aes(DF, errorForDF)) + 
+  geom_point() +
+  scale_x_continuous(breaks=c(10, 20, 30, 40, 50, 60, 70, 80, 90, 100)) +
+  labs(title = "RMSE from LOOCV for Data2", x = "Degrees of Freedom", y = "RMSE")
+
+#Initial inflection point appears to occur in about the same place (between 30 and 40)
+#used df = 35 again
+thirty5 <- smooth.spline(data2$x, data2$y, df=30) %>%
+  broom::augment() %>% 
+  ggplot(aes(x = data2$x)) +
+  geom_point(aes(y = data2$y)) +
+  geom_line(aes(y=.fitted), col="blue", size=1) +
+  labs(title = "Data2 Spline with 35 Degrees of Freedom", x = "x", y = "y") +
+  theme(plot.title = element_text(hjust = 0.5))
+thirty5
 ```
 
+#Rethinking the function findDF
+Since LOOCV appears to underestimate the RMSE for increasing degrees of freedom, I decided to write a new function for $k=5$ fold cross validation called FiveFoldCV. As before, for this function to work, the data needs to have a 3 column format with colnames X, Y, and ID. I chose to test between $df=20$ and $df=40$, since the inflection points for LOOCV for both data1 and data2 appear to fall in this range.
+```{r}
+FiveFoldCV <- function(data){
+  sampleSize <- length(data1$x)/5
+  set.seed(100)
+  Sample1 <- data %>% sample_n(sampleSize, replace = FALSE)
+  Sample2 <- data %>% setdiff(Sample1) %>% sample_n(sampleSize, replace = FALSE)
+  Sample3 <- data %>% setdiff(Sample1) %>% setdiff(Sample2) %>% sample_n(sampleSize, replace = FALSE)
+  Sample4 <- data %>% setdiff(Sample1) %>% setdiff(Sample2) %>% setdiff(Sample3) %>% sample_n(sampleSize, replace = FALSE)
+  Sample5 <- data %>% setdiff(Sample1) %>% setdiff(Sample2) %>% setdiff(Sample3) %>% setdiff(Sample4) 
+  
+  errorForDF <- rep(0, 98)
+  
+  for(i in 2:99){
+  errorVect <- rep(0,5)
+  
+  tempModel1Data <- data %>% setdiff(Sample1)
+  tempModel1 <- smooth.spline(tempModel1Data$x, tempModel1Data$y ,df = i)
+  errorVect[1] <- sum((Sample1$y - predict(tempModel1, Sample1$x)$y)^2)
+  
+  tempModel2Data <- data %>% setdiff(Sample2)
+  tempModel2 <- smooth.spline(tempModel2Data$x, tempModel2Data$y ,df = i)
+  errorVect[2] <- sum((Sample2$y - predict(tempModel2, Sample2$x)$y)^2)
+  
+  tempModel3Data <- data %>% setdiff(Sample3)
+  tempModel3 <- smooth.spline(tempModel3Data$x, tempModel3Data$y ,df = i)
+  errorVect[3] <- sum((Sample3$y - predict(tempModel3, Sample3$x)$y)^2)
+  
+  tempModel4Data <- data %>% setdiff(Sample4)
+  tempModel4 <- smooth.spline(tempModel4Data$x, tempModel4Data$y ,df = i)
+  errorVect[4] <- sum((Sample4$y - predict(tempModel4, Sample4$x)$y)^2)
+  
+  tempModel5Data <- data %>% setdiff(Sample5)
+  tempModel5 <- smooth.spline(tempModel5Data$x, tempModel5Data$y ,df = i)
+  errorVect[5] <- sum((Sample5$y - predict(tempModel5, Sample5$x)$y)^2)
+  
+  errorCurr <- sqrt(sum(errorVect)/length(data1$x))
+    
+  errorForDF[i-1] <- errorCurr
+  }
+  
+  return(errorForDF)
+}
+```
+
+#K=5 Cross Validation for Data1
+Running $K=5$ CV for Data1, I found a curve of the expected form: decreasing and then increasing RMSE as the degrees of freedom increases. I've plotted the splines model for the minimum RMSE found at $df=33$.
+```{r}
+errorTableData1FiveFold <- FiveFoldCV(data1)
+DF <- c(2:99)
+RMSEData1FiveFold <- data.frame(errorTableData1FiveFold, DF)
+ggplot(RMSEData1FiveFold, aes(DF, errorTableData1FiveFold)) + 
+  geom_point() +
+  scale_x_continuous(breaks=c(10, 20, 30, 40, 50, 60, 70, 80, 90, 100)) +
+  labs(title = "RMSE from K=5 CV for Data1", x = "Degrees of Freedom", y = "RMSE")
+
+print(RMSEData1FiveFold[RMSEData1FiveFold$errorTableData1FiveFold == min(RMSEData1FiveFold$errorTableData1FiveFold),])
+
+thirty3 <- smooth.spline(data1$x, data1$y, df=33) %>%
+  broom::augment() %>% 
+  ggplot(aes(x = data1$x)) +
+  geom_point(aes(y = data1$y)) +
+  geom_line(aes(y=.fitted), col="blue", size=1) +
+  labs(title = "Data1 Spline with 33 Degrees of Freedom", x = "x", y = "y") +
+  theme(plot.title = element_text(hjust = 0.5))
+thirty3
+```
+
+#K=5 Cross Validation for Data2
+Running $K=5$ CV for Data2, I found a curve of the expected form: decreasing and then increasing RMSE as the degrees of freedom increases. I've plotted the splines model for the minimum RMSE found at $df=27$.
+```{r}
+errorTableData2FiveFold <- FiveFoldCV(data2)
+DF <- c(2:99)
+RMSEData2FiveFold <- data.frame(errorTableData2FiveFold, DF)
+ggplot(RMSEData2FiveFold, aes(DF, errorTableData2FiveFold)) + 
+  geom_point() +
+  scale_x_continuous(breaks=c(10, 20, 30, 40, 50, 60, 70, 80, 90, 100)) +
+  labs(title = "RMSE from K=5 CV for Data2", x = "Degrees of Freedom", y = "RMSE")
+
+print(RMSEData2FiveFold[RMSEData2FiveFold$errorTableData2FiveFold == min(RMSEData2FiveFold$errorTableData2FiveFold),])
+
+twenty7 <- smooth.spline(data1$x, data1$y, df=27) %>%
+  broom::augment() %>% 
+  ggplot(aes(x = data2$x)) +
+  geom_point(aes(y = data2$y)) +
+  geom_line(aes(y=.fitted), col="blue", size=1) +
+  labs(title = "Data2 Spline with 27 Degrees of Freedom", x = "x", y = "y") +
+  theme(plot.title = element_text(hjust = 0.5))
+twenty7
+```
+
+#Conclusion:
+In this case, LOOCV did not capture the true prediction error due to model overfitting. K=5 cross validation proved a much better choice for finding the optimal degrees of freedom. Further, K=5 offered a significant improvement in analysis time and memory load. 
