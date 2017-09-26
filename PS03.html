@@ -294,9 +294,6 @@ thirtyFive</code></pre>
 <pre class="r"><code>#errorTableData2 &lt;- findDF(data2)
 #write.csv(errorTableData2, file = &quot;Data2RMSEforLOOCV.csv&quot;, row.names = FALSE)
 errorTableData2 &lt;- read.csv(&quot;Data2RMSEforLOOCV.csv&quot;)</code></pre>
-</div>
-<div id="update-this" class="section level1">
-<h1>UPDATE THIS</h1>
 <p>Plotting the errors with their corresponding df’s, we can see that, in this case, LOOCV doesn’t do a great job of capturing error caused by overfitting. My instinct says the optimal df probably lies somewhere between 30 and 40, where the curve has an inflection point.</p>
 <pre class="r"><code>ggplot(errorTableData2, aes(DF, errorForDF)) + 
   geom_point() +
@@ -317,7 +314,7 @@ thirty5</code></pre>
 </div>
 <div id="rethinking-the-function-finddf" class="section level1">
 <h1>Rethinking the function findDF</h1>
-<p>Since LOOCV appears to underestimate the RMSE for increasing degrees of freedom, I decided to write a new function for <span class="math inline">\(k=5\)</span> fold cross validation called FiveFoldCV. As before, for this function to work, the data needs to have a 3 column format with colnames X, Y, and ID. I chose to test between <span class="math inline">\(df=20\)</span> and <span class="math inline">\(df=40\)</span>, since the inflection points for LOOCV for both data1 and data2 appear to fall in this range.</p>
+<p>Since LOOCV appears to underestimate the RMSE for increasing degrees of freedom, I decided to write a new function for <span class="math inline">\(k=5\)</span> fold cross validation called FiveFoldCV. As before, for this function to work, the data needs to have a 3 column format with colnames X, Y, and ID.</p>
 <pre class="r"><code>FiveFoldCV &lt;- function(data){
   sampleSize &lt;- length(data1$x)/5
   set.seed(100)

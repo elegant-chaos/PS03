@@ -102,7 +102,7 @@ First, I'll call the function FindDF for data 2. (Again, I've written the output
 #write.csv(errorTableData2, file = "Data2RMSEforLOOCV.csv", row.names = FALSE)
 errorTableData2 <- read.csv("Data2RMSEforLOOCV.csv")
 ```
-#UPDATE THIS
+
 Plotting the errors with their corresponding df's, we can see that, in this case, LOOCV doesn't do a great job of capturing error caused by overfitting. My instinct says the optimal df probably lies somewhere between 30 and 40, where the curve has an inflection point.
 ```{r}
 ggplot(errorTableData2, aes(DF, errorForDF)) + 
@@ -123,7 +123,7 @@ thirty5
 ```
 
 #Rethinking the function findDF
-Since LOOCV appears to underestimate the RMSE for increasing degrees of freedom, I decided to write a new function for $k=5$ fold cross validation called FiveFoldCV. As before, for this function to work, the data needs to have a 3 column format with colnames X, Y, and ID. I chose to test between $df=20$ and $df=40$, since the inflection points for LOOCV for both data1 and data2 appear to fall in this range.
+Since LOOCV appears to underestimate the RMSE for increasing degrees of freedom, I decided to write a new function for $k=5$ fold cross validation called FiveFoldCV. As before, for this function to work, the data needs to have a 3 column format with colnames X, Y, and ID. 
 ```{r}
 FiveFoldCV <- function(data){
   sampleSize <- length(data1$x)/5
